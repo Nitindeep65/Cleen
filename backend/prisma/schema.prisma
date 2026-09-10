@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EquipmentStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum CleaningRecordStatus {
+  COMPLETED
+  IN_PROGRESS
+  FAILED
+}
+
+model Equipment {
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String
+  code            String           @unique
+  status          EquipmentStatus  @default(ACTIVE)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  cleaningRecords CleaningRecord[]
+
+  @@index([status])
+}
+
+model CleaningRecord {
+  id          String               @id @default(uuid()) @db.Uuid
+  equipmentId String               @db.Uuid
+  cleanedBy   String
+  cleanedAt   DateTime
+  method      String
+  notes       String?
+  status      CleaningRecordStatus @default(COMPLETED)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  equipment   Equipment            @relation(fields: [equipmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  auditLogs   AuditLog[]
+
+  @@index([equipmentId, cleanedAt])
+  @@index([equipmentId, status, cleanedAt])
+}
+
+model AuditLog {
+  id               String         @id @default(uuid()) @db.Uuid
+  cleaningRecordId String         @db.Uuid
+  changedBy        String
+  changedAt        DateTime       @default(now())
+  changes          Json
+  cleaningRecord   CleaningRecord @relation(fields: [cleaningRecordId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([cleaningRecordId, changedAt])
+}
